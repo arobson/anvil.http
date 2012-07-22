@@ -52,29 +52,31 @@ var serverFunction = function( _, anvil ) {
 		configure: function( config, command, done ) {
 			var self = this;
 
-			this.server = express.createServer();
-			this.server.use( express.bodyParser() );
-			this.server.use( this.server.router );
+			if( command.host ) {
+				this.server = express.createServer();
+				this.server.use( express.bodyParser() );
+				this.server.use( this.server.router );
 
-			_.each( anvil.config['anvil.http'].paths, function( filePath, url ) {
-				self.registerPath( url, filePath );
-			} );
-
-			anvil.registerPath = this.registerPath;
-
-			if( anvil.plugins.compiler ) {
-				var compilers = anvil.config.compiler.compilers;
-				_.each( compilers, function( compiler, ext ) {
-					var rgx = new RegExp( "/.*(" + ext + ")/" );
-					self.server.get( rgx, self.compile );
+				_.each( anvil.config['anvil.http'].paths, function( filePath, url ) {
+					self.registerPath( url, filePath );
 				} );
+
+				anvil.registerPath = this.registerPath;
+
+				if( anvil.plugins.compiler ) {
+					var compilers = anvil.config.compiler.compilers;
+					_.each( compilers, function( compiler, ext ) {
+						var rgx = new RegExp( "/.*(" + ext + ")/" );
+						self.server.get( rgx, self.compile );
+					} );
+				}
+
+				this.server.listen( anvil.config['anvil.http'].port );
+				this.socketServer = socketIO.listen( this.server );
+				this.socketServer.sockets.on( "connection", this.addClient );
+
+				anvil.events.on( "build.done", this.refreshClients );
 			}
-
-			this.server.listen( anvil.config['anvil.http'].port );
-			this.socketServer = socketIO.listen( this.server );
-			this.socketServer.sockets.on( "connection", this.addClient );
-
-			anvil.events.on( "build.done", this.refreshClients );
 			done();
 		},
 
