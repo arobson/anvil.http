@@ -1,13 +1,17 @@
+var http = require( "http" );
 var express = require( "express" );
 var socketIO = require( "socket.io" );
 var path = require( "path" );
+var fs = require( "fs" );
+var open = require( "open" );
 
 var serverFunction = function( _, anvil ) {
 	return anvil.plugin( {
 		name: "anvil.http",
 		clients: [],
 		commander: [
-			[ "--host", "starts the http and socket servers" ]
+			[ "--host", "starts the http and socket servers" ],
+			[ "--browser", "opens tab in your default browser" ]
 		],
 		config: {
 			contentTypes: {
@@ -23,6 +27,7 @@ var serverFunction = function( _, anvil ) {
 				".jade": "text/html"
 			},
 			port: 3080,
+			browser: false,
 			paths: {
 				"/": anvil.config.output
 			}
@@ -51,11 +56,13 @@ var serverFunction = function( _, anvil ) {
 
 		configure: function( config, command, done ) {
 			var self = this;
-
+			if( command.browser ) {
+				this.config.browser = true;
+			}
 			if( command.host ) {
-				this.server = express.createServer();
-				this.server.use( express.bodyParser() );
-				this.server.use( this.server.router );
+				this.app = express();
+				this.app.use( express.bodyParser() );
+				this.app.use( this.app.router );
 
 				_.each( anvil.config['anvil.http'].paths, function( filePath, url ) {
 					self.registerPath( url, filePath );
@@ -67,13 +74,20 @@ var serverFunction = function( _, anvil ) {
 					var compilers = anvil.config.compiler.compilers;
 					_.each( compilers, function( compiler, ext ) {
 						var rgx = new RegExp( "/.*(" + ext + ")/" );
-						self.server.get( rgx, self.compile );
+						self.app.get( rgx, self.compile );
 					} );
 				}
 
-				this.server.listen( anvil.config['anvil.http'].port );
+				var extPath = path.resolve( path.dirname( fs.realpathSync( __filename ) ), "../ext" ),
+					port = anvil.config['anvil.http'].port;
+				self.registerPath( "/anvil", extPath );
+				this.server = http.createServer( this.app ).listen( port );
 				this.socketServer = socketIO.listen( this.server );
+				this.socketServer.set( "log level", 1 );
 				this.socketServer.sockets.on( "connection", this.addClient );
+				if( this.config.browser ) {
+					open( "http://localhost:" + port + "/" );
+				}
 
 				anvil.events.on( "build.done", this.refreshClients );
 			}
@@ -93,7 +107,8 @@ var serverFunction = function( _, anvil ) {
 		},
 
 		registerPath: function( url, filePath ) {
-			this.server.use( url, express[ "static" ]( path.resolve( filePath ) ) );
+			anvil.log.debug( "registered " + url + " as " + filePath );
+			this.app.use( url, express[ "static" ]( path.resolve( filePath ) ) );
 		},
 
 		removeClient: function( socket ) {

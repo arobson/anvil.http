@@ -11,6 +11,11 @@ This plugin requires anvil.js version 0.8.* or greater.
 
 	anvil --host
 
+	anvil --host --browser
+
+### --browser
+Automatically open a browser tab in your default browser pointed to the root url. Why? Because it's awesome.
+
 ## Configuration
 Configuration can be changed by adding any of the three properties to the build file under "anvil.http": {}.
 
