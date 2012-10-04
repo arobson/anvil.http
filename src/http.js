@@ -32,12 +32,16 @@ var serverFunction = function( _, anvil ) {
 				"/": anvil.config.output
 			}
 		},
+		events: {
+			"socket.connected": [ socket ],
+			"socket.disconnected": [ socket ]
+		},
 
 		addClient: function( socket ) {
 			this.clients.push( socket );
 			socket.on( "end", this.removeClient );
 			anvil.log.event( "client connected" );
-			anvil.events.raise( "socket.connected", socket );
+			this.raise( "socket.connected", socket );
 		},
 
 		compile: function( req, res ) {
@@ -89,7 +93,7 @@ var serverFunction = function( _, anvil ) {
 					open( "http://localhost:" + port + "/" );
 				}
 
-				anvil.events.on( "build.done", this.refreshClients );
+				anvil.on( "build.done", this.refreshClients );
 			}
 			done();
 		},
@@ -116,7 +120,7 @@ var serverFunction = function( _, anvil ) {
 			if( index >= 0 ) {
 				this.clients.splice( index, 1 );
 				anvil.log.event( "client disconnected" );
-				anvil.events.raise( "socket.disconnected", socket );
+				this.raise( "socket.disconnected", socket );
 			}
 		}
 	} );

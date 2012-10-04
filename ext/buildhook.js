@@ -1,7 +1,7 @@
 var socket, port;
 
-$(function() {
-	port = window.location.port
+window.onload = function() {
+	port = window.location.port;
 	socket = io.connect( "http://" + document.domain + ':' + port + '/' );
 	socket.on('connect', function () {
 		socket.on( 'refresh', function () {
@@ -23,4 +23,4 @@ $(function() {
 			alert( 'Anvil server has disconnected', 'error' );
 		} );
 	} );
-} );
+};
