@@ -4,8 +4,12 @@ var socketIO = require( "socket.io" );
 var path = require( "path" );
 var fs = require( "fs" );
 var open = require( "open" );
+var url = require( "url" );
 
 var serverFunction = function( _, anvil ) {
+
+	var basePath = path.resolve( path.dirname( fs.realpathSync( __filename ) ), "../ext" );
+
 	return anvil.plugin( {
 		name: "anvil.http",
 		clients: [],
@@ -24,7 +28,8 @@ var serverFunction = function( _, anvil ) {
 				".md": "text/html",
 				".markdown": "text/html",
 				".haml": "text/html",
-				".jade": "text/html"
+				".jade": "text/html",
+				".html": "text/html"
 			},
 			port: 3080,
 			browser: false,
@@ -33,11 +38,12 @@ var serverFunction = function( _, anvil ) {
 			}
 		},
 		events: {
-			"socket.connected": [ socket ],
-			"socket.disconnected": [ socket ]
+			"socket.connected": [ "socket" ],
+			"socket.disconnected": [ "socket" ]
 		},
 
 		addClient: function( socket ) {
+			var self = this;
 			this.clients.push( socket );
 			socket.on( "end", this.removeClient );
 			anvil.log.event( "client connected" );
@@ -47,11 +53,11 @@ var serverFunction = function( _, anvil ) {
 		compile: function( req, res ) {
 			var fileName = "." + req.url;
 				ext = path.extname( fileName ),
-				mimeType = anvil.config['anvil.http'].contentTypes[ ext ];
+				mimeType = this.config.contentTypes[ ext ];
 
 			res.header( "Content-Type", mimeType );
 			anvil.fp.read( fileName, function( content ) {
-				var compiler = anvil.config.compiler.compilers[ ext ];
+				var compiler = anvil.config[ "anvil.transform" ].compilers[ ext ];
 				compiler( content, function( compiled ) {
 					res.send( compiled );
 				} );
@@ -67,35 +73,97 @@ var serverFunction = function( _, anvil ) {
 				this.app = express();
 				this.app.use( express.bodyParser() );
 				this.app.use( this.app.router );
+				this.app.use( this.injectControl );
 
-				_.each( anvil.config['anvil.http'].paths, function( filePath, url ) {
+				_.each( this.config.paths, function( filePath, url ) {
 					self.registerPath( url, filePath );
 				} );
 
-				anvil.registerPath = this.registerPath;
+				anvil.http = {
+					registerPath: this.registerPath,
+					open: this.open
+				};
 
-				if( anvil.plugins.compiler ) {
-					var compilers = anvil.config.compiler.compilers;
+				if( anvil.plugins[ "anvil.transform" ] ) {
+					var compilers = anvil.config[ "anvil.transform" ].compilers;
 					_.each( compilers, function( compiler, ext ) {
 						var rgx = new RegExp( "/.*(" + ext + ")/" );
 						self.app.get( rgx, self.compile );
 					} );
 				}
 
-				var extPath = path.resolve( path.dirname( fs.realpathSync( __filename ) ), "../ext" ),
-					port = anvil.config['anvil.http'].port;
+				var extPath = path.resolve( basePath, "../ext" );
 				self.registerPath( "/anvil", extPath );
-				this.server = http.createServer( this.app ).listen( port );
+				this.server = http.createServer( this.app ).listen( this.config.port );
 				this.socketServer = socketIO.listen( this.server );
 				this.socketServer.set( "log level", 1 );
 				this.socketServer.sockets.on( "connection", this.addClient );
+				//this.app.get( /[.]html$/, this.browserControl );
 				if( this.config.browser ) {
-					open( "http://localhost:" + port + "/" );
+					this.open();
 				}
 
 				anvil.on( "build.done", this.refreshClients );
+				this.publish( "setup.complete", {} );
 			}
 			done();
+		},
+
+		injectControl: function( req, res, next ) {
+			if (req.method !== "GET") {
+				next();
+				return;
+			}
+			var writeHead = res.writeHead,
+				write = res.write,
+				end = res.end,
+				chunks = [],
+				body,
+				totalSize = 0,
+				serve = function() {
+					var original = body.toString();
+					if( original.match( /[<][\/]body[>]/ ) ) {
+						var modified = original.replace( /[<][\/]body[>]/,
+							"<script src=\"/socket.io/socket.io.js\"></script>\n<script src=\"/anvil/buildHook.js\"></script>\n</body>"
+						);
+						res._headers[ "content-length" ] = modified.length;
+						res.end( modified );
+					} else {
+						res.end( body );
+					}
+				};
+
+			res.write = function( chunk, encoding ) {
+				if ( typeof chunk === "string" ) {
+					var length;
+					if ( !encoding || encoding === 'utf8' ) {
+						length = Buffer.byteLength( chunk );
+					}
+					var buffer = new Buffer( length );
+					buffer.write( chunk, encoding );
+					chunks.push( buffer );
+				} else {
+					chunks.push( chunk );
+				}
+				totalSize += chunk.length;
+			};
+
+			res.end = function( chunk, encoding ) {
+				if ( chunk && chunk.length ) {
+					res.write( chunk, encoding );
+				}
+				body = new Buffer( totalSize );
+				var offset = 0;
+				chunks.forEach( function( chunk ) {
+					chunk.copy( body, offset );
+					offset += chunk.length;
+				});
+				res.writeHead = writeHead;
+				res.write = write;
+				res.end = end;
+				serve();
+			};
+			next();
 		},
 
 		notifyClients: function( message, data ) {
@@ -103,6 +171,12 @@ var serverFunction = function( _, anvil ) {
 			_.each( this.clients, function( client ) {
 				client.emit( message, data );
 			} );
+		},
+
+		open: function( path ) {
+			var base = "http://localhost:" + this.config.port,
+				full = _.isEmpty( path ) ? base  + "/" : base + path;
+			open( full );
 		},
 
 		refreshClients: function() {
