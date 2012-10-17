@@ -11,7 +11,7 @@ window.onload = function() {
 			console.log( 'Lost connection to anvil, attempting to reconnect', 'warning' );
 		} );
 		socket.on( 'reconnect', function() {
-			alert( 'Reconnection to anvil succeeded' );
+			console.log( 'Reconnection to anvil succeeded' );
 		} );
 		socket.on( 'reconnect_failed', function() {
 			console.log( 'Reconnected to anvil failed', 'error' );
@@ -20,7 +20,7 @@ window.onload = function() {
 			console.log( 'Could not connect to anvil', 'error' );
 		} );
 		socket.on( 'disconnect', function() {
-			alert( 'Anvil server has disconnected', 'error' );
+			console.log( 'Anvil server has disconnected', 'error' );
 		} );
 	} );
 };
