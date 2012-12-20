@@ -1,7 +1,9 @@
-## Anvil HTTP Plugin
-Provides an integrated web host using express and socket.io. Extends anvil with functionality to allow other plugins to host features and content.
+## Anvil HTTP Extension
+THIS EXTENSION IS OBSOLETE AND BEING ACTIVELY REPLACED BY CORE FEATURES IN 0.9.*
 
-This plugin requires anvil.js version 0.8.* or greater.
+Provides an integrated web host using express and socket.io. Extends anvil with functionality to allow other extensions to host features and content.
+
+This extension requires anvil.js version 0.9.* or greater.
 
 ## Installation
 
@@ -44,7 +46,7 @@ Example:
 	}
 
 ## API
-Currently the only call that this plugin adds to anvil is registerPath.
+Currently the only call that this extension adds to anvil is registerPath.
 
 ### registerPath( url, filePath )
 This lets you register static files to serve at a specific relative url

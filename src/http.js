@@ -1,16 +1,17 @@
-var http = require( "http" );
-var express = require( "express" );
-var socketIO = require( "socket.io" );
+var http;
+var express;
+var socketIO;
+var open;
+
 var path = require( "path" );
 var fs = require( "fs" );
-var open = require( "open" );
 var url = require( "url" );
 
-var serverFunction = function( _, anvil ) {
+module.exports = function( _, anvil ) {
 
 	var basePath = path.resolve( path.dirname( fs.realpathSync( __filename ) ), "../ext" );
 
-	return anvil.plugin( {
+	anvil.plugin( {
 		name: "anvil.http",
 		clients: [],
 		commander: [
@@ -66,6 +67,10 @@ var serverFunction = function( _, anvil ) {
 
 		configure: function( config, command, done ) {
 			var self = this;
+			http = require( "http" );
+			express = require( "express" );
+			socketIO = require( "socket.io" );
+			open = require( "open" );
 			if( command.browser ) {
 				this.config.browser = true;
 			}
@@ -199,5 +204,3 @@ var serverFunction = function( _, anvil ) {
 		}
 	} );
 };
-
-module.exports = serverFunction;
