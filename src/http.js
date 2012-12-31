@@ -89,7 +89,7 @@ module.exports = function( _, anvil ) {
 					open: this.open
 				};
 
-				if( anvil.plugins[ "anvil.transform" ] ) {
+				if( anvil.extensions.plugins[ "anvil.transform" ] ) {
 					var compilers = anvil.config[ "anvil.transform" ].compilers;
 					_.each( compilers, function( compiler, ext ) {
 						var rgx = new RegExp( "/.*(" + ext + ")/" );
