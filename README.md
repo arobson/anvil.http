@@ -1,3 +1,6 @@
+# !NO LONGER AVAILABLE!
+This has been remove from NPM and will no longer be maintained.
+
 ## Anvil HTTP Extension
 THIS EXTENSION IS OBSOLETE AND BEING ACTIVELY REPLACED BY CORE FEATURES IN 0.9.*
 

@@ -48,7 +48,7 @@ module.exports = function( _, anvil ) {
 			this.clients.push( socket );
 			socket.on( "end", this.removeClient );
 			anvil.log.event( "client connected" );
-			this.raise( "socket.connected", socket );
+			this.emit( "socket.connected", { socket: socket } );
 		},
 
 		compile: function( req, res ) {
@@ -199,7 +199,7 @@ module.exports = function( _, anvil ) {
 			if( index >= 0 ) {
 				this.clients.splice( index, 1 );
 				anvil.log.event( "client disconnected" );
-				this.raise( "socket.disconnected", socket );
+				this.emit( "socket.disconnected", { socket: socket } );
 			}
 		}
 	} );
